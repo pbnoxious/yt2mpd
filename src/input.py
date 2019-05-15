@@ -7,4 +7,6 @@ def setup_parser():
         prog = "yt2mpd"
         )
 
-    parser.add_argument("-s", metavar="song", help="ID or URL of song")
+    parser.add_argument("-s", metavar="song", help="ID or URL of song", required=true)
+
+
