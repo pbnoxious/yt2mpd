@@ -5,22 +5,10 @@ import sys
 import cliarguments
 import config
 
-def main():
-    """Main entry point for the script."""
-    cliargs = cliarguments.CliArguments() # read input
-    print(cliargs.config_path)
-    print(cliargs.song)
-
-    settings = config.Config(cliargs.config_path) # read settings
-    print(settings.config_path)
-
-if __name__ == '__main__':
-    sys.exit(main())
-
-
-def download_song(identifier):
+def download_song(identifier, tmp_dir):
     """Get song from youtube"""
-    os.system("youtube-dl -xq " + identifier)
+    os.system("youtube-dl -xq --add-metadata -o '"
+              + tmp_dir + os.path.sep + "%(title)s-%(id)s.%(ext)s' " + identifier)
 
 def update_mpd():
     """Update MPD database"""
@@ -36,3 +24,14 @@ def remove_song(filename):
     os.system("mpc idle playlist") # this waits until something in the playlist is changed
     playlist=list(os.popen("mpc playlist"))
     #check if it is still there -> if not remove
+
+def main():
+    """Main entry point for the script."""
+    cliargs = cliarguments.CliArguments() # read input
+    settings = config.Config(cliargs.config_path) # read settings
+    download_song(cliargs.song, settings.tmp_dir)
+    # update_mpd()
+    # add_song_to_mpd(
+
+if __name__ == '__main__':
+    sys.exit(main())
