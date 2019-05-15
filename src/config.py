@@ -1,8 +1,9 @@
 import configparser
 import logging
 import os
+import sys
 
-class Settings:
+class Config:
     """Stores and processes all settings
 
     Attributes:
@@ -13,27 +14,44 @@ class Settings:
         (wanted audio format?)
     """
 
-
     def __init__(self, config_path):
-        self.music_dir = os.environ['XDG_MUSIC_DIR']
+        try:
+            self.music_dir = os.environ['XDG_MUSIC_DIR']
+        except KeyError:
+            self.music_dir = None
         self.tmp_dir = "youtube"
         self.config_path = None
         self.set_config_path(config_path)
+        self.read_config()
+
 
     def set_config_path(self, config_path):
         """Determine path of config file, at the moment optimized for linux"""
-        if not os.path.isfile(config_path):
-            try:
-                config_dir= os.environ['XDG_CONFIG_HOME']
-            except KeyError:
-                config_dir = os.environ['HOME'] + "/.config"
-            config_path = config_dir + "/yt2mpd/yt2mpd.conf"
-            if not os.path.isfile(config_path):
-                # maybe exiting with an error would be better?
-                # Alternative: global settings file instead of default values in init?
-                logging.info("Config file not found, using default settings")
-                return # empty path means default settings
-        self.config_path = config_path
+
+        default_config_dirs = [
+            # commented out because it breaks if not set
+            # os.path.join(os.environ.get('XDG_CONFIG_HOME'), '.yt2mpt'),
+            os.path.join(os.environ.get('HOME'), '.config', 'yt2mpd') ]
+        default_config_filename = "yt2mpd.conf"
+
+        if config_path is not None:
+            if os.path.isfile(config_path):
+                self.config_path = config_path
+            else:
+                print("Error: Specified config file was not found")
+                sys.exit(1)
+        else: # check some default locations if no config path was given
+            for directory in default_config_dirs:
+                try:
+                    # this is ugly
+                    path = os.path.join(directory, default_config_filename)
+                    if os.path.isfile(path):
+                        self.config_path = path
+                        return # if file was found, don't proceed
+                except KeyError:
+                    pass # ignore not found errors?
+            logging.warning("No config file found, using default values")
+
 
     def read_config(self):
         """Read the config file at given path"""
@@ -41,3 +59,23 @@ class Settings:
             return # use default values
         config = configparser.ConfigParser()
         config.read(self.config_path)
+
+        self.music_dir = get_config_option(config, 'yt2mpd', 'music_dir')
+        if os.path.isdir(self.music_dir) is False:
+            print("Error: specified MPD directory does not exist")
+            sys.exit(1)
+
+        self.tmp_dir = os.path.join(
+            self.music_dir,
+            get_config_option(config, 'yt2mpd', 'tmp_dir'))
+        if os.path.isdir(self.tmp_dir) is False:
+            os.makedirs(self.tmp_dir) # possible race condition
+
+
+def get_config_option(config, section, option):
+    """ Get option from config parser exception safe and return it"""
+    try:
+        variable = config.get(section, option)
+    except KeyError:
+        print("KeyError")
+    return variable

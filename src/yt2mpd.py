@@ -2,12 +2,17 @@
 
 import os
 import sys
-import input
+import cliarguments
 import config
 
 def main():
     """Main entry point for the script."""
-    pass
+    cliargs = cliarguments.CliArguments() # read input
+    print(cliargs.config_path)
+    print(cliargs.song)
+
+    settings = config.Config(cliargs.config_path) # read settings
+    print(settings.config_path)
 
 if __name__ == '__main__':
     sys.exit(main())
