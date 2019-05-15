@@ -17,10 +17,10 @@ class Settings:
     def __init__(self, config_path):
         self.music_dir = os.environ['XDG_MUSIC_DIR']
         self.tmp_dir = "youtube"
-        self.config_path = self.set_config_path(config_path)
+        self.config_path = None
+        self.set_config_path(config_path)
 
-    @staticmethod
-    def set_config_path(config_path):
+    def set_config_path(self, config_path):
         """Determine path of config file, at the moment optimized for linux"""
         if not os.path.isfile(config_path):
             try:
@@ -29,13 +29,15 @@ class Settings:
                 config_dir = os.environ['HOME'] + "/.config"
             config_path = config_dir + "/yt2mpd/yt2mpd.conf"
             if not os.path.isfile(config_path):
-                logging.info("Config file not found using default settings")
-                exit (-1) # how to get global settings path?
-        return config_path
+                # maybe exiting with an error would be better?
+                # Alternative: global settings file instead of default values in init?
+                logging.info("Config file not found, using default settings")
+                return # empty path means default settings
+        self.config_path = config_path
 
     def read_config(self):
         """Read the config file at given path"""
         if self.config_path is None:
-            return # probably use "class" with default values -> don't overwrite
+            return # use default values
         config = configparser.ConfigParser()
         config.read(self.config_path)
