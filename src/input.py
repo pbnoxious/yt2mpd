@@ -1,5 +1,6 @@
 import argparse
 
+
 def setup_parser():
     """Definitions of all cli arguments for the argparser"""
     parser = argparse.ArgumentParser(
@@ -7,6 +8,4 @@ def setup_parser():
         prog = "yt2mpd"
         )
 
-    parser.add_argument("-s", metavar="song", help="ID or URL of song", required=true)
-
-
+    parser.add_argument("-s", metavar="song", help="ID or URL of song", required=True)

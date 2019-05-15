@@ -2,6 +2,8 @@
 
 import os
 import sys
+import input
+import config
 
 def main():
     """Main entry point for the script."""
