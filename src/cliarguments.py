@@ -7,6 +7,7 @@ class CliArguments:
     Attributes:
         config_path: String holding custom path to config file
         song: ID or URL of song
+        (searchstring: allow searching for songs using --default-search?)
         parser: argparser
     """
 

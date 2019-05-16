@@ -65,11 +65,10 @@ class Config:
             print("Error: specified MPD directory does not exist")
             sys.exit(1)
 
-        self.tmp_dir = os.path.join(
-            self.music_dir,
-            get_config_option(config, 'yt2mpd', 'tmp_dir'))
-        if os.path.isdir(self.tmp_dir) is False:
-            os.makedirs(self.tmp_dir) # possible race condition
+        self.tmp_dir = get_config_option(config, 'yt2mpd', 'tmp_dir')
+        full_tmp_path = os.path.join(self.music_dir, self.tmp_dir)
+        if os.path.isdir(full_tmp_path) is False:
+            os.makedirs(full_tmp_path) # possible race condition
 
 
 def get_config_option(config, section, option):
