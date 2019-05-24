@@ -6,14 +6,14 @@ class CliArguments:
 
     Attributes:
         config_path: String holding custom path to config file
-        song: ID or URL of song
+        identifier: ID or URL of song or playlist
         (searchstring: allow searching for songs using --default-search?)
         parser: argparser
     """
 
     def __init__(self):
         self.config_path = None
-        self.song = None
+        self.identifier = None
         self.parser = None
         self.setup_parser()
         self.parse_arguments()
@@ -25,8 +25,10 @@ class CliArguments:
             prog = "yt2mpd"
             )
 
-        self.parser.add_argument("-s", metavar="song", help="ID or URL of song", required=True)
-        self.parser.add_argument("-c", metavar="config_path", help="Path to config file")
+        self.parser.add_argument("-i", metavar="identifier",
+                                 help="ID or URL of youtube video or playlist", required=True)
+        self.parser.add_argument("-c", metavar="config_path",
+                                 help="Path to config file")
 
     def parse_arguments(self):
         """Process cli arguments and store them in class attributes"""
