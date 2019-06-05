@@ -33,6 +33,6 @@ class CliArguments:
     def parse_arguments(self):
         """Process cli arguments and store them in class attributes"""
         args = self.parser.parse_args()
-        self.song = args.s
+        self.identifier = args.i
         if args.c is not None:
             self.config_path = args.c

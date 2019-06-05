@@ -3,31 +3,30 @@
 import os
 import shlex
 import sys
+import subprocess
 import cliarguments
 import config
 
 def download_song(identifier, music_dir, tmp_dir):
     """Get song from youtube"""
-    file_format = "%(title)s-%(id)s.%(ext)s" # move this to config file
-    audio_format = "vorbis" # same
-    file_extension = ".ogg" # but more difficult here
-    output_string = "'" + os.path.join(music_dir, tmp_dir) + os.path.sep + file_format + "' "
-    os.system("youtube-dl -xq" +
-              " --add-metadata" +
-              " --audio-format " + audio_format +
-              " --audio-quality 0" +
-              " -o " + output_string +
-              identifier
-             )
-    file_format = "%(title)s-%(id)s" # move this to config file
-    output_string = "'" + tmp_dir + os.path.sep + file_format + "' "
-    filename = os.popen("youtube-dl " +
-                        " --get-filename" +
-                        " -o " + output_string +
-                        identifier
-                       ).read()[:-1] # remove newline
-    # filename.replace(" ", "\ ")
-    return filename + file_extension
+    file_format = "%(playlis_index)s-%(title)s.%(ext)s" # move this to config file
+    audio_format = "vorbis" # not needed at the moment, maybe allow this as option
+    file_extension = ".ogg" # would probably then be needed too
+    output_string = os.path.join(music_dir, tmp_dir, file_format)
+    print("Downloading from " + identifier + "\nto " + os.path.join(music_dir, tmp_dir))
+    ytdl = subprocess.Popen(["youtube-dl", "-x", "--add-metadata",
+                             "-o", output_string, identifier
+                            ],
+                            stdout=subprocess.PIPE
+                           )
+    stdout = ytdl.communicate()[0].decode('UTF-8') # get string of stdout
+    print(stdout)
+    searchstring = "[ffmpeg] Adding metadata to " # these lines contain the filenames
+    filenames = [line[len(searchstring)+1:-1] for line in stdout.split("\n") if searchstring in line]
+    print(filenames)
+    filenames = [os.path.relpath(f, music_dir) for f in filenames]
+    print(filenames)
+    return filenames
 
 def update_mpd():
     """Update MPD database"""
@@ -36,7 +35,7 @@ def update_mpd():
 
 def add_song_to_mpd(filename):
     """Update MPD database"""
-    os.system("mpc add " + shlex.quote(filename))
+    os.system("mpc add " + "'" + filename + "'")
 
 def remove_song(filename):
     """Check if song is still in playlist, otherwise remove it from disk"""
@@ -48,9 +47,11 @@ def main():
     """Main entry point for the script."""
     cliargs = cliarguments.CliArguments() # read input
     settings = config.Config(cliargs.config_path) # read settings
-    filename = download_song(cliargs.song, settings.music_dir, settings.tmp_dir)
+    bool_playlist = "playlist" in str(cliargs.identifier) # check if playlist URL / ID
+    filenames = download_song(cliargs.identifier, settings.music_dir, settings.tmp_dir)
     update_mpd()
-    add_song_to_mpd(filename)
+    for filename in filenames:
+        add_song_to_mpd(filename)
 
 if __name__ == '__main__':
     sys.exit(main())
