@@ -1,7 +1,7 @@
 """Scripts to automatically fetch youtube audio and play it via mpd."""
 
 import os
-import shlex
+from re import escape
 import sys
 import subprocess
 import cliarguments
@@ -35,7 +35,8 @@ def update_mpd():
 
 def add_song_to_mpd(filename):
     """Update MPD database"""
-    os.system("mpc add " + "'" + filename + "'")
+    print("mpc add " + escape(filename))
+    os.system("mpc add " + escape(filename))
 
 def remove_song(filename):
     """Check if song is still in playlist, otherwise remove it from disk"""
