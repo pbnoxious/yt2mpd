@@ -22,23 +22,18 @@ def download_song(identifier, music_dir, tmp_dir):
                             stdout=subprocess.PIPE
                            )
     stdout = ytdl.communicate()[0].decode('UTF-8') # get string of stdout
-    print(stdout)
     searchstring = "[ffmpeg] Adding metadata to " # these lines contain the filenames
     filenames = [line[len(searchstring)+1:-1] for line in stdout.split("\n") if searchstring in line]
-    print(filenames)
     filenames = [os.path.relpath(f, music_dir) for f in filenames]
-    print(filenames)
     return filenames
 
 def update_mpd():
     """Update MPD database"""
-    os.system("mpc update -q")
-
+    os.system("mpc update -q --wait")
 
 def add_song_to_mpd(filename):
     """Update MPD database"""
-    print('mpc add "' + filename + '"')
-    os.system("mpc add '" + filename + "'")
+    os.system('mpc add "{}"'.format(filename))
 
 def remove_song(filename):
     """Check if song is still in playlist, otherwise remove it from disk"""
@@ -50,11 +45,15 @@ def main():
     """Main entry point for the script."""
     cliargs = cliarguments.CliArguments() # read input
     settings = config.Config(cliargs.config_path) # read settings
-    bool_playlist = "playlist" in str(cliargs.identifier) # check if playlist URL / ID
     filenames = download_song(cliargs.identifier, settings.music_dir, settings.tmp_dir)
+    print("Files were downloaded, now updating mpd and adding files")
     update_mpd()
     for filename in filenames:
         add_song_to_mpd(filename)
+    if len(filenames) == 1:
+        print("Song was added to MPD successfully")
+    else:
+        print("{} songs were added successfully".format(len(filenames)))
 
 if __name__ == '__main__':
     sys.exit(main())
