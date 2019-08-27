@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Scripts to automatically fetch youtube audio and play it via mpd."""
 
 import os
@@ -7,9 +8,10 @@ import subprocess
 import cliarguments
 import config
 
+
 def download_song(identifier, music_dir, tmp_dir):
     """Get song from youtube"""
-    file_format = "%(playlis_index)s-%(title)s.%(ext)s" # move this to config file
+    file_format = "%(playlist_index)s-%(title)s-%(id)s.%(ext)s" # move this to config file
     audio_format = "vorbis" # not needed at the moment, maybe allow this as option
     file_extension = ".ogg" # would probably then be needed too
     output_string = os.path.join(music_dir, tmp_dir, file_format)
@@ -35,8 +37,8 @@ def update_mpd():
 
 def add_song_to_mpd(filename):
     """Update MPD database"""
-    print("mpc add " + escape(filename))
-    os.system("mpc add " + escape(filename))
+    print('mpc add "' + filename + '"')
+    os.system("mpc add '" + filename + "'")
 
 def remove_song(filename):
     """Check if song is still in playlist, otherwise remove it from disk"""
