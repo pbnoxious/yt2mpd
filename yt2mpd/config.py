@@ -60,21 +60,12 @@ class Config:
         config = configparser.ConfigParser()
         config.read(self.config_path)
 
-        self.music_dir = get_config_option(config, 'yt2mpd', 'music_dir')
+        self.music_dir = config.get('yt2mpd', 'music_dir')
         if os.path.isdir(self.music_dir) is False:
             print("Error: specified MPD directory does not exist")
             sys.exit(1)
 
-        self.tmp_dir = get_config_option(config, 'yt2mpd', 'tmp_dir')
+        self.tmp_dir = config.get('yt2mpd', 'tmp_dir')
         full_tmp_path = os.path.join(self.music_dir, self.tmp_dir)
         if os.path.isdir(full_tmp_path) is False:
             os.makedirs(full_tmp_path) # possible race condition
-
-
-def get_config_option(config, section, option):
-    """ Get option from config parser exception safe and return it"""
-    try:
-        variable = config.get(section, option)
-    except KeyError:
-        print("KeyError")
-    return variable
