@@ -1,13 +1,25 @@
 #!/usr/bin/env python3
 """Scripts to automatically fetch youtube audio and play it via mpd."""
 
+import argparse
 import os
-from re import escape
 import sys
 import subprocess
-import cliarguments
+
 import config
 
+def parse_args():
+    """Get command line arguments"""
+    parser = argparse.ArgumentParser(
+        description = "Fetch audio from youtube and play it via mpd.",
+        prog = "yt2mpd"
+        )
+    parser.add_argument('identifier',
+                        help="ID or URL of youtube video or playlist",
+                        required=True)
+    parser.add_argument("-c", metavar="config_path",
+                        help="Path to config file")
+    return parser.parse_args()
 
 def download_song(identifier, music_dir, tmp_dir):
     """Get song from youtube"""
@@ -43,7 +55,7 @@ def remove_song(filename):
 
 def main():
     """Main entry point for the script."""
-    cliargs = cliarguments.CliArguments() # read input
+    cliargs = parse_args() # read input
     settings = config.Config(cliargs.config_path) # read settings
     filenames = download_song(cliargs.identifier, settings.music_dir, settings.tmp_dir)
     print("Files were downloaded, now updating mpd and adding files")
