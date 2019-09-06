@@ -15,8 +15,7 @@ def parse_args():
         prog = "yt2mpd"
         )
     parser.add_argument('identifier',
-                        help="ID or URL of youtube video or playlist",
-                        required=True)
+                        help="ID or URL of youtube video or playlist")
     parser.add_argument("-c", metavar="config_path",
                         help="Path to config file")
     return parser.parse_args()
