@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Scripts to automatically fetch youtube audio and play it via mpd."""
+"""Script to fetch audio from youtube and play it via mpd."""
 
 import argparse
 import os
@@ -16,8 +16,9 @@ def parse_args():
         )
     parser.add_argument('identifier',
                         help="ID or URL of youtube video or playlist")
-    parser.add_argument("-c", metavar="config_path",
-                        help="Path to config file")
+    parser.add_argument("-c", "--config_path", metavar="config_path",
+                        help="Path to config file",
+                        default=None)
     return parser.parse_args()
 
 def download_song(identifier, music_dir, tmp_dir):
@@ -27,7 +28,7 @@ def download_song(identifier, music_dir, tmp_dir):
     file_extension = ".ogg" # would probably then be needed too
     output_string = os.path.join(music_dir, tmp_dir, file_format)
     print("Downloading from " + identifier + "\nto " + os.path.join(music_dir, tmp_dir))
-    ytdl = subprocess.Popen(["youtube-dl", "-x", "--add-metadata",
+    ytdl = subprocess.Popen(["youtube-dl", "-i", "-x", "--add-metadata",
                              "-o", output_string, identifier
                             ],
                             stdout=subprocess.PIPE
