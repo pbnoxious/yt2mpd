@@ -3,4 +3,4 @@
 import yt2mpd
 
 if __name__ == '__main__':
-    yt2mpd.main()
+    yt2mpd.yt2mpd.main()
