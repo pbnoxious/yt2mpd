@@ -1,6 +1,3 @@
-#!/usr/bin/env python
+#!/bin/bash
 
-import yt2mpd
-
-if __name__ == '__main__':
-    yt2mpd.yt2mpd.main()
+python -m yt2mpd
