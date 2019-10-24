@@ -6,7 +6,8 @@ import os
 import sys
 import subprocess
 
-import config
+from . import config
+
 
 def parse_args():
     """Get command line arguments"""
@@ -20,6 +21,7 @@ def parse_args():
                         help="Path to config file",
                         default=None)
     return parser.parse_args()
+
 
 def download_song(identifier, music_dir, tmp_dir):
     """Get song from youtube"""
@@ -38,6 +40,7 @@ def download_song(identifier, music_dir, tmp_dir):
     filenames = [line[len(searchstring)+1:-1] for line in stdout.split("\n") if searchstring in line]
     filenames = [os.path.relpath(f, music_dir) for f in filenames]
     return filenames
+
 
 def update_mpd():
     """Update MPD database"""
