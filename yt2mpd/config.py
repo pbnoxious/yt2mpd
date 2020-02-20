@@ -20,6 +20,7 @@ class Config:
         except KeyError:
             self.music_dir = None
         self.tmp_dir = "youtube"
+        self.prune = False
         self.config_path = None
         self.set_config_path(config_path)
         self.read_config()
@@ -69,3 +70,4 @@ class Config:
         full_tmp_path = os.path.join(self.music_dir, self.tmp_dir)
         if os.path.isdir(full_tmp_path) is False:
             os.makedirs(full_tmp_path) # possible race condition
+        self.prune = config.getboolean('yt2mpd', 'prune', fallback=False)
