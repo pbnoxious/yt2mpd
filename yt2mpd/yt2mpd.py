@@ -88,7 +88,7 @@ def main():
     else:
         print("{} songs were added successfully".format(len(filenames)))
 
-    if cliargs.delete:
+    if settings.delete or cliargs.delete:
         print("Waiting for songs to be removed from playlist")
         while filenames: # not sure if this is wise, might wait for a long time ...
             os.system("mpc idle playlist > /dev/null") # this waits until something in the playlist is changed

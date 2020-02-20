@@ -21,6 +21,7 @@ class Config:
             self.music_dir = None
         self.tmp_dir = "youtube"
         self.prune = False
+        self.delete = False
         self.config_path = None
         self.set_config_path(config_path)
         self.read_config()
@@ -71,3 +72,4 @@ class Config:
         if os.path.isdir(full_tmp_path) is False:
             os.makedirs(full_tmp_path) # possible race condition
         self.prune = config.getboolean('yt2mpd', 'prune', fallback=False)
+        self.delete = config.getboolean('yt2mpd', 'delete', fallback=False)
