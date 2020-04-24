@@ -6,14 +6,14 @@ import os
 import sys
 import subprocess
 
-from . import config
+from .config import Config
 
 
 def parse_args():
     """Get command line arguments"""
     parser = argparse.ArgumentParser(
-        description = "Fetch audio from youtube and play it via mpd.",
-        prog = "yt2mpd"
+        description="Fetch audio from youtube and play it via mpd.",
+        prog="yt2mpd"
         )
     parser.add_argument('identifier',
                         help="ID or URL of youtube video or playlist")
@@ -29,14 +29,14 @@ def parse_args():
 
 def download_song(identifier, music_dir, tmp_dir):
     """Get song from youtube"""
-    file_format = "%(playlist_index)s-%(title)s-%(id)s.%(ext)s" # move this to config file
+    file_format = "%(playlist_index)s-%(title)s-%(id)s.%(ext)s"  # move this to config file
     audio_format = "vorbis" # not needed at the moment, maybe allow this as option
     file_extension = ".ogg" # would probably then be needed too
     output_string = os.path.join(music_dir, tmp_dir, file_format)
     print("Downloading from " + identifier + "\nto " + os.path.join(music_dir, tmp_dir))
-    ytdl = subprocess.Popen(["youtube-dl", "-i", "-x", "--add-metadata",
+    ytdl = subprocess.Popen(["youtube-dl", "-i", "-x", "--add-metadata", "--rm-cache-dir",
                              "-o", output_string, identifier
-                            ],
+                             ],
                             stdout=subprocess.PIPE
                            )
     stdout = ytdl.communicate()[0].decode('UTF-8') # get string of stdout
@@ -50,15 +50,23 @@ def update_mpd():
     """Update MPD database"""
     os.system("mpc update -q --wait")
 
+
 def add_song_to_mpd(filename):
-    """Update MPD database"""
+    """Add song at end of current playlist.
+    Returns artist and title of added song as tuple"""
     os.system('mpc add "{}"'.format(filename))
+    song_query = subprocess.Popen(['mpc -f "%artist%\n%title%" listall "{}"'.format(filename)],
+                                  stdout=subprocess.PIPE, shell=True)
+    (artist, title, _) = song_query.communicate()[0].decode('UTF-8').split("\n")
+    return artist, title
+
 
 def remove_songs(filename):
     """Check if song is still in playlist, otherwise remove it from disk"""
-    os.system("mpc idle playlist") # this waits until something in the playlist is changed
+    os.system("mpc idle playlist")  # This waits until something in the playlist is changed
     playlist=list(os.popen("mpc playlist"))
-    #check if it is still there -> if not remove
+    # Check if it is still there -> if not remove
+
 
 def prune_dir(filenames, music_dir):
     """Remove all files in directory"""
@@ -67,12 +75,13 @@ def prune_dir(filenames, music_dir):
     for f in set(filenames).difference(curr_playlist): # only those not in playlist
         os.remove(os.path.join(music_dir, f)) # f contains tmp_dir
         filenames.remove(f)
-    return filenames # return cleaned up list
+    return filenames  # Return cleaned up list
+
 
 def main():
     """Main entry point for the script."""
-    cliargs = parse_args() # read input
-    settings = config.Config(cliargs.config_path) # read settings
+    cliargs = parse_args()  # read input
+    settings = Config(cliargs.config_path)  # read settings
 
     if settings.prune or cliargs.prune:
         oldfiles = [os.path.join(settings.tmp_dir, f) for f in os.listdir(os.path.join(settings.music_dir, settings.tmp_dir))]
@@ -81,19 +90,22 @@ def main():
     filenames = download_song(cliargs.identifier, settings.music_dir, settings.tmp_dir)
     print("Files were downloaded, now updating mpd and adding files")
     update_mpd()
+    songtags = []
     for filename in filenames:
-        add_song_to_mpd(filename)
+        songtags.append(add_song_to_mpd(filename))
     if len(filenames) == 1:
-        print("Song was added to MPD successfully")
+        (artist, title) = songtags[0]
+        print('Song "{} - {}" was added to MPD successfully'.format(artist, title))
     else:
-        print("{} songs were added successfully".format(len(filenames)))
+        print("{} songs were added successfully:".format(len(filenames)))
+        for (artist, title) in songtags:
+            print("  {} - {}".format(artist, title))
 
     if settings.delete or cliargs.delete:
         print("Waiting for songs to be removed from playlist")
-        while filenames: # not sure if this is wise, might wait for a long time ...
+        while filenames:  # not sure if this is wise, might wait for a long time ...
             os.system("mpc idle playlist > /dev/null") # this waits until something in the playlist is changed
             filenames = prune_dir(filenames, settings.music_dir)
-
 
 
 if __name__ == '__main__':
