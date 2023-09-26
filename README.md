@@ -2,7 +2,7 @@
 > youtube to mpd script
 
 Small tool that makes playing audio from youtube videos in mpd possible.
-Uses youtube-dl to download the requested audio to a temporary folder.
+Uses yt-dlp to download the requested audio to a temporary folder.
 Adds the successfully downloaded files to the current MPD playlist via mpc.
 
 ## Installation

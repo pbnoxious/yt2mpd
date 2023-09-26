@@ -56,7 +56,7 @@ def download(identifier, music_dir, tmp_dir):
     print("Downloading from " + identifier + "\nto " + os.path.join(music_dir, tmp_dir))
     ytdl = subprocess.Popen(
         [
-            "youtube-dl",
+            "yt-dlp",
             "-i",
             "-x",
             "--add-metadata",
@@ -68,9 +68,9 @@ def download(identifier, music_dir, tmp_dir):
         stdout=subprocess.PIPE,
     )
     stdout = ytdl.communicate()[0].decode("UTF-8")  # get string of stdout
-    searchstring = "[ffmpeg] Adding metadata to "  # these lines contain the filenames
+    searchstring = "[Metadata] Adding metadata to "  # these lines contain the filenames
     filenames = [
-        line[len(searchstring) + 1 : -1]
+        line[len(searchstring)+1 : -1]
         for line in stdout.split("\n")
         if searchstring in line
     ]
