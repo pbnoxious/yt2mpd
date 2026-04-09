@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "yt2mpd"
+version = "0.2"
+description = "Automatically download music via yt-dlp and play it in MPD"
+authors = [
+  { name = "pbnoxious" },
+]
+license = "GPL-3.0-or-later"
+
