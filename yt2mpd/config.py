@@ -29,6 +29,7 @@ class Config:
         self.prune = False
         self.delete = False
         self.config_path = None
+        self.sleep_between_requests = 5
         self.set_config_path(config_path)
         self.read_config()
 
@@ -78,3 +79,4 @@ class Config:
             os.makedirs(full_tmp_path)  # possible race condition
         self.prune = config.getboolean("yt2mpd", "prune", fallback=False)
         self.delete = config.getboolean("yt2mpd", "delete", fallback=False)
+        self.sleep_between_requests = config.get("yt2mpd", "delete", fallback="5")

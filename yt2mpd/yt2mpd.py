@@ -34,10 +34,16 @@ def parse_args():
         action="store_true",
         help="Clean temporary directory on startup. Only files that are not queued are removed.",
     )
+    parser.add_argument(
+        "--sleep-between-requests",
+        dest="sleep_between_requests",
+        default="5",
+        help="Time to wait (sleep) between different download requests in seconds. Default 5",
+    )
     return parser.parse_args()
 
 
-def download(identifier, music_dir, tmp_dir):
+def download(identifier, music_dir, tmp_dir, sleep_between_requests):
     """Get song from youtube"""
     list_marker = "?list="
     if list_marker in identifier:  # download playlist -> put in subdir
@@ -60,6 +66,8 @@ def download(identifier, music_dir, tmp_dir):
             "-i",
             "-x",
             "--add-metadata",
+            "--sleep-interval",
+            sleep_between_requests,
             "--rm-cache-dir",
             "-o",
             output_string,
@@ -120,7 +128,7 @@ def main():
         ]
         prune_dir(oldfiles, settings.music_dir)
 
-    filenames = download(cliargs.identifier, settings.music_dir, settings.tmp_dir)
+    filenames = download(cliargs.identifier, settings.music_dir, settings.tmp_dir, settings.sleep_between_requests)
     print(f"{len(filenames)} Files were downloaded, now updating mpd and adding files")
     update_mpd()
     songtags = []
