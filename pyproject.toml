@@ -11,3 +11,6 @@ authors = [
 ]
 license = "GPL-3.0-or-later"
 
+[project.scripts]
+yt2mpd = "yt2mpd.yt2mpd:main"
+
