@@ -1,146 +1,134 @@
 #!/usr/bin/env python3
-"""Script to fetch audio from youtube and play it via mpd."""
+"""Fetch audio with yt-dlp and add it to the MPD queue."""
 
 import argparse
-import os
-import sys
+import json
+import re
 import subprocess
+import sys
+from urllib.parse import parse_qs, urlsplit
 
 from .config import Config
+from .storage import DownloadStore
 
 
 def parse_args():
-    """Get command line arguments"""
     parser = argparse.ArgumentParser(
         description="Fetch audio from youtube and play it via mpd.", prog="yt2mpd"
     )
     parser.add_argument("identifier", help="ID or URL of youtube video or playlist")
     parser.add_argument(
-        "-c",
-        "--config_path",
-        metavar="config_path",
-        help="Path to config file",
-        default=None,
+        "-c", "--config_path", metavar="config_path", help="Path to config file"
     )
     parser.add_argument(
         "-d",
         "--delete",
         action="store_true",
-        help="Wait until tracks were removed from playlist and delete them directly.",
+        help="Wait for downloaded tracks to leave the queue, then delete owned files.",
     )
     parser.add_argument(
         "-p",
         "--prune",
         action="store_true",
-        help="Clean temporary directory on startup. Only files that are not queued are removed.",
+        help="Remove owned downloads that are not in the MPD queue before downloading.",
     )
     return parser.parse_args()
 
 
 def download(identifier, music_dir, tmp_dir):
-    """Get song from youtube"""
-    list_marker = "?list="
-    if list_marker in identifier:  # download playlist -> put in subdir
-        list_id = identifier.split(list_marker)[1]
-        tmp_dir = os.path.join(tmp_dir, list_id)
-        try:
-            os.mkdir(os.path.join(music_dir, tmp_dir))
-        except FileExistsError:
-            pass  # ignore if directory already exists
-    file_format = (
-        "%(playlist_index)s-%(title)s-%(id)s.%(ext)s"  # move this to config file
+    """Use machine-readable paths, with no external downloader configuration."""
+    playlist_ids = parse_qs(urlsplit(identifier).query, keep_blank_values=True).get(
+        "list", []
     )
-    audio_format = "vorbis"  # not needed at the moment, maybe allow this as option
-    file_extension = ".ogg"  # would probably then be needed too
-    output_string = os.path.join(music_dir, tmp_dir, file_format)
-    print("Downloading from " + identifier + "\nto " + os.path.join(music_dir, tmp_dir))
-    ytdl = subprocess.Popen(
+    if playlist_ids and (
+        len(playlist_ids) != 1
+        or not re.fullmatch(r"[A-Za-z0-9_-]{1,200}", playlist_ids[0])
+    ):
+        raise ValueError(
+            "Invalid playlist ID: only letters, digits, '_' and '-' are allowed"
+        )
+    store = DownloadStore(music_dir, tmp_dir)
+    batch = store.new_batch(playlist_ids[0] if playlist_ids else None)
+    template = str(batch / "%(playlist_index)s-%(title)s-%(id)s.%(ext)s")
+    print(f"Downloading from {identifier}\nto {batch}")
+    result = subprocess.run(
         [
             "yt-dlp",
-            "-i",
+            "--ignore-config",
             "-x",
             "--add-metadata",
-            "--rm-cache-dir",
+            "--no-simulate",
+            "--print",
+            "after_move:%(filepath)j",
             "-o",
-            output_string,
+            template,
+            "--",
             identifier,
         ],
         stdout=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        check=True,
     )
-    stdout = ytdl.communicate()[0].decode("UTF-8")  # get string of stdout
-    searchstring = "[Metadata] Adding metadata to "  # these lines contain the filenames
-    filenames = [
-        line[len(searchstring)+1 : -1]
-        for line in stdout.split("\n")
-        if searchstring in line
-    ]
-    filenames = [os.path.relpath(f, music_dir) for f in filenames]
-    return filenames
+    filenames = [json.loads(line) for line in result.stdout.splitlines() if line]
+    return store.record(batch, filenames)
 
 
 def update_mpd():
-    """Update MPD database"""
-    os.system("mpc update -q --wait")
+    subprocess.run(["mpc", "update", "-q", "--wait"], check=True)
 
 
 def add_song_to_mpd(filename):
-    """Add song at end of current playlist.
-    Returns artist and title of added song as tuple"""
-    os.system('mpc add "{}"'.format(filename))
-    song_query = subprocess.Popen(
-        ['mpc -f "%artist%\n%title%" listall "{}"'.format(filename)],
+    """Pass media filenames as literal arguments, never as shell source."""
+    subprocess.run(["mpc", "add", "--", filename], check=True)
+    result = subprocess.run(
+        ["mpc", "-f", "%artist%\n%title%", "listall", "--", filename],
         stdout=subprocess.PIPE,
-        shell=True,
+        text=True,
+        encoding="utf-8",
+        check=True,
     )
-    (artist, title, _) = song_query.communicate()[0].decode("UTF-8").split("\n")
-    return artist, title
+    tags = result.stdout.splitlines()
+    if len(tags) != 2:
+        raise ValueError("MPD returned unexpected artist/title information")
+    return tuple(tags)
 
 
-def prune_dir(filenames, music_dir):
-    """Remove all given files from the tmp_dir if not in current mpd playlist"""
-    mpd_query = subprocess.Popen(
-        ["mpc", "playlist", "-f", "%file%"], stdout=subprocess.PIPE
+def prune_dir(store, filenames):
+    """A failed MPD query raises before any deletion is attempted."""
+    result = subprocess.run(
+        ["mpc", "playlist", "-f", "%file%"],
+        stdout=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        check=True,
     )
-    curr_playlist = mpd_query.communicate()[0].decode("UTF-8").split("\n")
-    for f in set(filenames).difference(curr_playlist):  # only those not in playlist
-        os.remove(os.path.join(music_dir, f))  # f contains tmp_dir
-        filenames.remove(f)
-    return filenames  # Return cleaned up list
+    return store.prune(filenames, set(result.stdout.splitlines()))
 
 
 def main():
-    """Main entry point for the script."""
-    cliargs = parse_args()  # read input
-    settings = Config(cliargs.config_path)  # read settings
-
+    cliargs = parse_args()
+    settings = Config(cliargs.config_path)
+    store = DownloadStore(settings.music_dir, settings.tmp_dir)
     if settings.prune or cliargs.prune:
-        oldfiles = [
-            os.path.join(settings.tmp_dir, f)
-            for f in os.listdir(os.path.join(settings.music_dir, settings.tmp_dir))
-        ]
-        prune_dir(oldfiles, settings.music_dir)
+        prune_dir(store, store.owned_files())
 
     filenames = download(cliargs.identifier, settings.music_dir, settings.tmp_dir)
-    print(f"{len(filenames)} Files were downloaded, now updating mpd and adding files")
+    print(f"{len(filenames)} files were downloaded, now updating MPD and adding files")
     update_mpd()
-    songtags = []
     for filename in filenames:
-        songtags.append(add_song_to_mpd(filename))
-    if len(filenames) == 1:
-        (artist, title) = songtags[0]
-        print('Song "{} - {}" was added to MPD successfully'.format(artist, title))
-    else:
-        print("{} songs were added successfully:".format(len(filenames)))
-        for artist, title in songtags:
-            print("  {} - {}".format(artist, title))
+        artist, title = add_song_to_mpd(filename)
+        print(f'Song "{artist} - {title}" was added to MPD successfully')
 
     if settings.delete or cliargs.delete:
-        print("Waiting for songs to be removed from playlist")
-        while filenames:  # not sure if this is wise, might wait for a long time ...
-            os.system(
-                "mpc idle playlist > /dev/null"
-            )  # this waits until something in the playlist is changed
-            filenames = prune_dir(filenames, settings.music_dir)
+        print("Waiting for songs to be removed from the queue")
+        # Query before waiting too: a track can leave the queue before idle starts.
+        filenames = prune_dir(store, filenames)
+        while filenames:
+            subprocess.run(
+                ["mpc", "idle", "playlist"], stdout=subprocess.DEVNULL, check=True
+            )
+            filenames = prune_dir(store, filenames)
 
 
 if __name__ == "__main__":
